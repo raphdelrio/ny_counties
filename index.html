@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Display map navigation controls</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@5/turf.min.js"></script>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+
+    <style>
+        @font-face {
+            font-family: "archia-bold";
+            src: url(fonts/archia-bold-webfont.woff);
+        }
+
+        @font-face {
+            font-family: "proxima-reg";
+            src: url(fonts/Proxima\ Nova\ Reg.woff);
+        }
+
+        @font-face {
+            font-family: "proxima-bold";
+            src: url(fonts/Proxima\ Nova\ Bold.woff);
+        }
+
+        @font-face {
+            font-family: "archia-med";
+            src: url(fonts/Archia-Medium.otf);
+        }
+
+        .archia-bold {
+            font-family: "archia-bold";
+        }
+
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        h1 {
+            font-family: "archia-bold";
+            color: #2D435D;
+            font-size: 19px;
+            line-height: 27px;
+        }
+
+        h4 {
+            font-family: "proxima-reg";
+            color: #818181;
+            font-size: 14px;
+            text-transform: uppercase;
+            margin-top: 0px;
+        }
+
+        .title {
+            font-family: "proxima-reg";
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #2D2D2D;
+        }
+
+        .data {
+            font-family: "archia-med";
+            font-size: 29px;
+            color: #2E435C;
+        }
+
+        .mapboxgl-popup-tip {
+            display: none;
+        }
+
+        .mapboxgl-popup-content {
+            width: 300px;
+            padding: 10px 10px 15px;
+        }
+
+        .mpopup .mapboxgl-popup-content {
+            border: 1px solid #B4BAC1;
+        }
+
+        .mapboxgl-popup-close-button {
+            background: #2D435D;
+            width: 100%;
+            text-align: end;
+        }
+
+        .mapboxgl-popup-close-button:hover {
+            background: #2D435D;
+            text-align: end;
+        }
+
+        .popup-header {
+            background-color: #2D435D;
+        }
+
+        .circle {
+            border-radius: 50%;
+            box-shadow: 0px 0px 0px 5px #F39717, 0px 0px 0px 10px white, 0px 0px 0px 14px #F39717;
+            width: 5px;
+            height: 5px;
+            margin: 20px;
+            color: #F39717;
+            background-color: #F39717;
+        }
+
+        .green {
+            box-shadow: 0px 0px 0px 5px #00B24A, 0px 0px 0px 10px white, 0px 0px 0px 14px #00B24A;
+            background-color: #00B24A;
+        }
+
+        .dblue {
+            box-shadow: 0px 0px 0px 5px #2D435D, 0px 0px 0px 10px white, 0px 0px 0px 14px #2D435D;
+            background-color: #2D435D;
+        }
+
+        .blue {
+            box-shadow: 0px 0px 0px 5px #7D29CC, 0px 0px 0px 10px white, 0px 0px 0px 14px #7D29CC;
+            background-color: #7D29CC;
+        }
+
+        #legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            border: 1px solid rgba(129, 129, 129, 0.5);
+            border-radius: 5px;
+            display: flex;
+            z-index: 1000;
+            font-weight: bold;
+            padding: 5px 10px;
+            background-color: white;
+            font-family: "proxima-bold";
+            -webkit-box-shadow: -1px 2px 23px 1px rgba(0, 0, 0, 0.34);
+            box-shadow: -1px 2px 23px 1px rgba(0, 0, 0, 0.34);
+        }
+
+        .legend-item {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            margin: 1px 10px;
+        }
+
+        .orange_ {
+            color: #F39717;
+        }
+
+        .green_ {
+            color: #00B24A;
+        }
+
+        .dblue_ {
+            color: #2D435D;
+        }
+
+        .blue_ {
+            color: #7D29CC;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- <div id="legend">
+        <div class="legend-item">
+            <div class="circle "></div>
+            <div class="orange_">Under construction</div>
+        </div>
+        <div class="legend-item">
+            <div class="circle green"></div>
+            <div class="green_">RNG</div>
+        </div>
+        <div class="legend-item">
+            <div class="circle dblue"></div>
+            <div class="dblue_">RNG and Electric</div>
+        </div>
+        <div class="legend-item">
+            <div class="circle blue"></div>
+            <div class="blue_">Electric</div>
+        </div>
+    </div> -->
+    <div id="map"></div>
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoicmFwaGRlbHJpbyIsImEiOiJja3RjYjFieXYyNDFkMm5tdW5qb3p6MGdiIn0.dr1STs54Qi1wh7X2Tqtvcg';
+
+        const map = new mapboxgl.Map({
+            container: 'map', // container ID
+            style: {
+                "version": 8,
+                "name": "blank",
+                "sources": {
+                    "openmaptiles": {
+                        "type": "vector",
+                        "url": ""
+                    }
+                },
+                "layers": [{
+                    "id": "background",
+                    "type": "background",
+                    "paint": {
+                        "background-color": "white"
+                    }
+                }]
+            }, // style URL
+            center: { lng: -75.71876332152435, lat: 42.66567071643135 },
+            zoom: 3.2 // starting zoom
+        });
+        // Add zoom and rotation controls to the map.
+        map.addControl(new mapboxgl.NavigationControl());
+
+
+        map.on('load', () => {
+
+
+            map.addSource('data', {
+                type: 'geojson',
+                // Use a URL for the value for the `data` property.
+                data: 'data/Counties_Shoreline.json'
+            });
+
+            map.addLayer({
+                'id': 'maine',
+                'type': 'fill',
+                'source': 'data', // reference the data source
+                'layout': {},
+                'paint': {
+                    'fill-color': '#ccccff', // blue color fill
+                    'fill-opacity': 1
+                }
+            });
+            map.addLayer({
+                'id': 'route',
+                'type': 'line',
+                'source': 'data',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': '#fff',
+                    'line-width': 2
+                }
+            });
+
+
+
+            d3.csv('data/TeleSAFE_sites.csv').then(data => {
+
+                const colors = {
+                    'RNG': "#00B24A",
+                    'Under Construction': "#f39717",
+                    'RNG and Electric': "#2D435D",
+                    'Electric': "#7D29CC",
+                }
+                const pinsData = data;
+                let bounds = new mapboxgl.LngLatBounds();
+                const pins = pinsData.map(i => {
+                    console.log('i', i);
+                    const { lat, lng, Name } = i
+                    const latlng = [+lng, +lat];
+                    bounds.extend(latlng)
+                    return turf.point(latlng, { ...i, name: Name, color: "#F7921E" });
+                })
+
+                const collection = turf.featureCollection(pins)
+                map.getSource("pins").setData(collection)
+                //map.fitBounds(bounds, { padding: 150, maxZoom: 15 })
+            })
+
+
+            map.addSource('pins', {
+                "type": "geojson",
+                "data": {
+                    "type": "FeatureCollection",
+                    "features": []
+                }
+            });
+
+            // map.addLayer({
+            //     'id': 'pins-stroke',
+            //     'type': 'circle',
+            //     'source': 'pins',
+            //     'paint': {
+            //         'circle-radius': 10,
+            //         "circle-opacity": 0,
+            //         "circle-stroke-width": 2,
+            //         "circle-stroke-color": ['get', 'color'],
+            //     }
+            // });
+
+            map.addLayer({
+                'id': 'pins-layer',
+                'type': 'circle',
+                'source': 'pins',
+                'paint': {
+                    'circle-radius': 8,
+                    'circle-stroke-width': 0,
+                    'circle-color': ['get', 'color'],
+
+                }
+            });
+
+
+            map.on('pins-layer', (e) => {
+                // Copy coordinates array.
+                const coordinates = e.features[0].geometry.coordinates.slice();
+                const props = e.features[0].properties;
+
+                // Ensure that if the map is zoomed out such that multiple
+                // copies of the feature are visible, the popup appears
+                // over the copy being pointed to.
+                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                }
+
+                const text = `
+                    
+                <div style="margin:20px 10px;">
+                    <div>
+                        <h1>${props.Name}</h1>
+                    </div>
+                </div>
+
+                `
+
+                new mapboxgl.Popup({
+                    className: "mpopup",
+                    maxWidth: 300
+                })
+                    .setLngLat(coordinates)
+                    .setHTML(text)
+                    .addTo(map);
+            });
+
+        });
+
+
+    </script>
+
+</body>
+
+</html>
